@@ -1,0 +1,4 @@
+package com.jobagent.backend.modules.resume.service.impl;
+
+public class ResumeStorageServiceImpl {
+}
