@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import com.jobagent.backend.common.config.JobAgentProperties;
 import com.jobagent.backend.common.util.JsonCodec;
 import com.jobagent.backend.modules.chat.service.JobRuntimeService;
+import com.jobagent.backend.modules.job.dto.command.JobFavoriteAnalysisCommand;
+import com.jobagent.backend.modules.job.dto.command.JobFavoriteSaveCommand;
 import com.jobagent.backend.modules.job.mapper.JobFavoriteMapper;
 import com.jobagent.backend.modules.job.service.JobFavoriteService;
 import com.jobagent.backend.modules.resume.entity.ResumeRecord;
@@ -49,11 +51,12 @@ public class JobFavoriteServiceImpl implements JobFavoriteService {
         return result;
     }
 
-    public void saveFavorite(Map<String, Object> job) {
-        if (job == null || job.isEmpty()) {
+    public void saveFavorite(JobFavoriteSaveCommand command) {
+        if (command == null || command.isEmpty()) {
             return;
         }
 
+        Map<String, Object> job = command.toSnapshot();
         String key = jobKey(job);
         Map<String, Object> payload = new LinkedHashMap<String, Object>(job);
         payload.put("favoriteKey", key);
@@ -77,7 +80,9 @@ public class JobFavoriteServiceImpl implements JobFavoriteService {
         mapper.removeFavorite(userId(), jobKey);
     }
 
-    public Map<String, Object> analyzeFavorite(String jobKey, String resumeId) {
+    public Map<String, Object> analyzeFavorite(JobFavoriteAnalysisCommand command) {
+        String jobKey = command == null ? null : command.getJobKey();
+        String resumeId = command == null ? null : command.getResumeId();
         if (jobKey == null || jobKey.trim().isEmpty()) {
             throw new IllegalArgumentException("缺少收藏岗位标识");
         }

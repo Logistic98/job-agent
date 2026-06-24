@@ -91,6 +91,11 @@ job-agent:
   runtime-max-failures: ${JOB_AGENT_RUNTIME_MAX_FAILURES:2}
   max-resume-bytes: ${JOB_AGENT_MAX_RESUME_BYTES:5242880}
   resume-runtime-workspace: ${JOB_AGENT_RESUME_RUNTIME_WORKSPACE:}
+  auth:
+    enabled: ${JOB_AGENT_AUTH_ENABLED:true}
+    internal-api-token: ${JOB_AGENT_INTERNAL_API_TOKEN:}
+    asset-url-signing-key: ${JOB_AGENT_ASSET_URL_SIGNING_KEY:}
+    asset-url-ttl-seconds: ${JOB_AGENT_ASSET_URL_TTL_SECONDS:3600}
   minio:
     endpoint: ${JOB_AGENT_MINIO_ENDPOINT}
     access-key: ${JOB_AGENT_MINIO_ACCESS_KEY}
