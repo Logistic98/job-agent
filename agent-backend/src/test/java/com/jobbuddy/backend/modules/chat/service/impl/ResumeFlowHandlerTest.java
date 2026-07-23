@@ -69,20 +69,54 @@ class ResumeFlowHandlerTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   void shouldRespectExplicitNewTargetInsteadOfReusingSelectedJob() {
     ResumeFlowHandler handler = handler();
     ChatSessionState state = new ChatSessionState();
     state.lastSlots = new LinkedHashMap<String, Object>();
     state.lastSlots.put(
         SELECTED_JOB_CONTEXT_KEY, Collections.<String, Object>singletonMap("jobName", "上一轮岗位"));
+    state.jobs = new ArrayList<Map<String, Object>>();
+    state.jobs.add(Collections.<String, Object>singletonMap("jobName", "旧岗位列表"));
     Map<String, Object> slots = new LinkedHashMap<String, Object>();
     slots.put("role", "上海 Java 大模型应用开发岗");
 
     List<Map<String, Object>> jobs =
         handler.resolveTargetJobs(
-            state, "分析上海 Java 大模型应用开发岗", "上海 Java 大模型应用开发岗", "上海 Java 大模型应用开发岗", "", slots, false);
+            state, "分析上海 Java 大模型应用开发岗", "上海 Java 大模型应用开发岗", "上海 Java 大模型应用开发岗", "", slots, true);
 
     assertTrue(jobs.isEmpty());
+    assertFalse(
+        ResumeFlowHandler.shouldReuseSelectedJob(
+            (Map<String, Object>) state.lastSlots.get(SELECTED_JOB_CONTEXT_KEY),
+            "现在用这个6年的简历分析另一个上海 Java 大模型应用开发岗",
+            "上海 Java 大模型应用开发岗",
+            "",
+            true));
+  }
+
+  @Test
+  void shouldKeepCurrentJobListForPluralReference() {
+    ResumeFlowHandler handler = handler();
+    ChatSessionState state = new ChatSessionState();
+    state.lastSlots = new LinkedHashMap<String, Object>();
+    state.lastSlots.put(
+        SELECTED_JOB_CONTEXT_KEY, Collections.<String, Object>singletonMap("jobName", "单个选中岗位"));
+    state.jobs = new ArrayList<Map<String, Object>>();
+    state.jobs.add(Collections.<String, Object>singletonMap("jobName", "岗位列表第一项"));
+
+    List<Map<String, Object>> jobs =
+        handler.resolveTargetJobs(
+            state,
+            "把这些岗位和我的简历做匹配",
+            "大模型应用开发",
+            "大模型应用开发",
+            "",
+            Collections.<String, Object>emptyMap(),
+            false);
+
+    assertEquals(1, jobs.size());
+    assertEquals("岗位列表第一项", jobs.get(0).get("jobName"));
   }
 
   @Test

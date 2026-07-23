@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.jobbuddy.backend.common.util.JsonCodec;
@@ -29,6 +30,7 @@ class SelectedJobAnalysisHandlerTest {
         new SelectedJobAnalysisHandler(
             sender, new SelectedJobContextResolver(mock(BossCliService.class)), resumeFlowHandler);
     ChatSessionState state = new ChatSessionState();
+    state.resumeId = "resume-1";
     Map<String, Object> selectedJob = new LinkedHashMap<String, Object>();
     selectedJob.put("securityId", "job-1");
     selectedJob.put("jobName", "Java 大模型应用开发工程师");
@@ -54,7 +56,7 @@ class SelectedJobAnalysisHandlerTest {
   void shouldLoadMissingJobDescriptionBeforeRememberingContext() throws Exception {
     BossCliService bossCliService = mock(BossCliService.class);
     Map<String, Object> detail = new LinkedHashMap<String, Object>();
-    detail.put("jobDescription", "负责大模型应用平台、Agent 工作流、Java 后端服务和线上稳定性治理，要求具备完整工程落地经验。");
+    detail.put("description", "负责大模型应用平台、Agent 工作流、Java 后端服务和线上稳定性治理，要求具备完整工程落地经验。");
     when(bossCliService.jobDetail("job-2", "https://www.zhipin.com/job_detail/job-2.html"))
         .thenReturn(new JsonCodec().toTree(detail));
     ResumeFlowHandler resumeFlowHandler = mock(ResumeFlowHandler.class);
@@ -64,9 +66,11 @@ class SelectedJobAnalysisHandlerTest {
             new SelectedJobContextResolver(bossCliService),
             resumeFlowHandler);
     ChatSessionState state = new ChatSessionState();
+    state.resumeId = "resume-2";
     Map<String, Object> selectedJob = new LinkedHashMap<String, Object>();
     selectedJob.put("securityId", "job-2");
     selectedJob.put("jobName", "大模型应用开发岗");
+    selectedJob.put("description", "岗位摘要");
     selectedJob.put("originalUrl", "https://www.zhipin.com/job_detail/job-2.html");
 
     handler.handle(mock(SseEmitter.class), "session-2", state, "分析此岗位", selectedJob);
@@ -80,6 +84,36 @@ class SelectedJobAnalysisHandlerTest {
   }
 
   @Test
+  void shouldNotLoadJobDetailBeforeResumeIsSelected() throws Exception {
+    BossCliService bossCliService = mock(BossCliService.class);
+    ChatSseEventSender sender = mock(ChatSseEventSender.class);
+    ResumeFlowHandler resumeFlowHandler = mock(ResumeFlowHandler.class);
+    SelectedJobAnalysisHandler handler =
+        new SelectedJobAnalysisHandler(
+            sender, new SelectedJobContextResolver(bossCliService), resumeFlowHandler);
+    Map<String, Object> selectedJob = new LinkedHashMap<String, Object>();
+    selectedJob.put("securityId", "job-without-resume");
+    selectedJob.put("jobName", "大模型应用开发岗");
+
+    handler.handle(
+        mock(SseEmitter.class),
+        "session-without-resume",
+        new ChatSessionState(),
+        "分析此岗位",
+        selectedJob);
+
+    verifyNoInteractions(bossCliService);
+    verify(resumeFlowHandler, never()).handleSelectedJobMatch(any(), any(), any(), any(), any());
+    verify(sender)
+        .sendAssistant(
+            any(SseEmitter.class),
+            eq("session-without-resume"),
+            any(ChatSessionState.class),
+            org.mockito.ArgumentMatchers.contains("请先选择或上传 PDF 简历"),
+            any(Map.class));
+  }
+
+  @Test
   void shouldNotRunMatchWhenJobDescriptionCannotBeResolved() throws Exception {
     ChatSseEventSender sender = mock(ChatSseEventSender.class);
     ResumeFlowHandler resumeFlowHandler = mock(ResumeFlowHandler.class);
@@ -88,9 +122,10 @@ class SelectedJobAnalysisHandlerTest {
             sender, new SelectedJobContextResolver(mock(BossCliService.class)), resumeFlowHandler);
     Map<String, Object> selectedJob = new LinkedHashMap<String, Object>();
     selectedJob.put("jobName", "只有名称的岗位");
+    ChatSessionState state = new ChatSessionState();
+    state.resumeId = "resume-3";
 
-    handler.handle(
-        mock(SseEmitter.class), "session-3", new ChatSessionState(), "分析此岗位", selectedJob);
+    handler.handle(mock(SseEmitter.class), "session-3", state, "分析此岗位", selectedJob);
 
     verify(resumeFlowHandler, never()).handleSelectedJobMatch(any(), any(), any(), any(), any());
     verify(sender)

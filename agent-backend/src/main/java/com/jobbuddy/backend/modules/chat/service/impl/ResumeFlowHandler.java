@@ -420,8 +420,14 @@ class ResumeFlowHandler {
     if (shouldReuseSelectedJob(
         selectedJob, rawMessage, explicitTargetRole, targetDescription, reusePreviousSlots))
       return Collections.singletonList(selectedJob);
+    List<Map<String, Object>> manualJobs = manualTargetJobs(targetRole, targetDescription, slots);
+    if (!manualJobs.isEmpty()) return manualJobs;
+    if (!stringValue(explicitTargetRole).isEmpty()
+        && hasExplicitNewTarget(rawMessage, explicitTargetRole, targetDescription)) {
+      return Collections.emptyList();
+    }
     if (state != null && state.jobs != null && !state.jobs.isEmpty()) return state.jobs;
-    return manualTargetJobs(targetRole, targetDescription, slots);
+    return Collections.emptyList();
   }
 
   static boolean shouldReuseSelectedJob(
@@ -430,12 +436,50 @@ class ResumeFlowHandler {
       String explicitTargetRole,
       String targetDescription,
       boolean reusePreviousSlots) {
-    return selectedJob != null
-        && !selectedJob.isEmpty()
-        && (reusePreviousSlots
-            || (stringValue(targetDescription).isEmpty()
-                && (stringValue(explicitTargetRole).isEmpty()
-                    || isSelectedJobResumeFollowUp(rawMessage))));
+    if (selectedJob == null || selectedJob.isEmpty()) return false;
+    if (hasExplicitNewTarget(rawMessage, explicitTargetRole, targetDescription)) return false;
+    return reusePreviousSlots
+        || (stringValue(targetDescription).isEmpty()
+            && (stringValue(explicitTargetRole).isEmpty()
+                || isSelectedJobResumeFollowUp(rawMessage)));
+  }
+
+  static boolean hasExplicitNewTarget(
+      String rawMessage, String explicitTargetRole, String targetDescription) {
+    String message = stringValue(rawMessage).trim();
+    if (message.isEmpty()) return false;
+    if (message.contains("这些岗位")
+        || message.contains("这批岗位")
+        || message.contains("当前岗位列表")
+        || message.contains("上述岗位")
+        || message.contains("前面这些岗位")) return false;
+    if (message.contains("另一个岗位")
+        || message.contains("另一个职位")
+        || message.contains("新岗位")
+        || message.contains("新的岗位")
+        || message.contains("新职位")
+        || message.contains("新的职位")
+        || message.contains("换个岗位")) return true;
+
+    String normalizedMessage = message.replaceAll("\\s+", "").toLowerCase(java.util.Locale.ROOT);
+    String normalizedRole =
+        stringValue(explicitTargetRole).replaceAll("\\s+", "").toLowerCase(java.util.Locale.ROOT);
+    if (normalizedRole.length() >= 2 && normalizedMessage.contains(normalizedRole)) return true;
+    if (!stringValue(targetDescription).isEmpty() && message.length() >= 30) return true;
+
+    String withoutReferences =
+        message
+            .replace("这个岗位", "")
+            .replace("该岗位", "")
+            .replace("上一轮岗位", "")
+            .replace("上一个岗位", "")
+            .replace("刚才的岗位", "")
+            .replace("刚才那个岗位", "");
+    return withoutReferences.contains("岗位")
+        || withoutReferences.contains("职位")
+        || withoutReferences.contains("JD")
+        || withoutReferences.contains("jd")
+        || withoutReferences.contains("工程师");
   }
 
   static boolean isSelectedJobResumeFollowUp(String rawMessage) {

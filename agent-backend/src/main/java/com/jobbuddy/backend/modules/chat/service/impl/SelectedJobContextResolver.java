@@ -168,9 +168,30 @@ final class SelectedJobContextResolver {
   private void mergeDetail(Map<String, Object> target, Map<String, Object> detail) {
     if (detail == null || detail.isEmpty()) return;
     mergeMissing(target, detail);
+    preferCompleteDescription(target, detail);
     Object nested = firstPresent(detail, "job", "jobInfo", "jobDetail", "detail");
     if (nested instanceof Map) {
-      mergeMissing(target, (Map<String, Object>) nested);
+      Map<String, Object> nestedJob = (Map<String, Object>) nested;
+      mergeMissing(target, nestedJob);
+      preferCompleteDescription(target, nestedJob);
+    }
+  }
+
+  private void preferCompleteDescription(Map<String, Object> target, Map<String, Object> detail) {
+    Object value =
+        firstPresent(
+            detail,
+            "jobDescription",
+            "description",
+            "postDescription",
+            "jobDesc",
+            "jobSecText",
+            "detailText",
+            "jobRequire",
+            "jobContent");
+    String description = normalizeText(value);
+    if (description.length() >= MIN_JOB_DESCRIPTION_CHARS) {
+      target.put("jobDescription", description);
     }
   }
 

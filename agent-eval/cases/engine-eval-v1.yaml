@@ -280,6 +280,8 @@ cases:
     latency_budget:
       ttfb_ms_target: 300
       ttfb_ms_max: 1000
+      ttft_ms_target: null
+      ttft_ms_max: null
       done_ms_target: 1500
       done_ms_max: 4000
 

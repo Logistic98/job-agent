@@ -33,6 +33,15 @@ class SelectedJobAnalysisHandler {
       Map<String, Object> selectedJob)
       throws IOException {
     Map<String, Object> initialContext = contextResolver.compact(selectedJob);
+    if (state == null || state.resumeId == null || state.resumeId.trim().isEmpty()) {
+      sender.sendAssistant(
+          emitter,
+          sessionId,
+          state,
+          "请先选择或上传 PDF 简历，再分析此岗位与简历的匹配度。",
+          java.util.Collections.<String, Object>singletonMap("selectedJob", initialContext));
+      return;
+    }
     Map<String, Object> startDetail = new LinkedHashMap<String, Object>();
     startDetail.put("job", initialContext);
     startDetail.put("hasJobDescription", contextResolver.hasSufficientDescription(initialContext));
